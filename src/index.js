@@ -21,7 +21,7 @@ function initialData(num) {
 }
 
 function setup(gl) {
-  const particleCount = 65535 * 2;
+  const particleCount = 1000; // 65535 * 2;
   // create gl program for updating particle movement
   const updateProgram = twgl.createProgramInfo(gl, [updateVert, updateFrag], {
     transformFeedbackVaryings: ['v_Position', 'v_Velocity'],
@@ -107,7 +107,10 @@ function setup(gl) {
       level: 0,
     },
   ];
-  const fbi = twgl.createFramebufferInfo(gl, attachments);
+  const fbis = [
+    twgl.createFramebufferInfo(gl, attachments),
+    twgl.createFramebufferInfo(gl, attachments),
+  ];
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
   // create gl program for rendering a texture to the screen
@@ -150,7 +153,7 @@ function setup(gl) {
     oldTime: 0,
     totalTime: 0,
     vaos,
-    fbi,
+    fbis,
     displayTextureProgram,
     displayTextureBufferInfo,
     displayTextureVao,
@@ -187,29 +190,32 @@ function run(gl, state, time) {
 
   twgl.setBuffersAndAttributes(gl, state.updateProgram, state.vaos[state.read]);
   twgl.setUniforms(state.updateProgram, {
+    u_Texture: state.fbis[state.write].attachments[0],
+    u_Width: gl.canvas.width,
+    u_Height: gl.canvas.height,
     u_TimeDelta: timeDelta / 1000,
   });
   gl.enable(gl.BLEND);
   gl.enable(gl.RASTERIZER_DISCARD);
   const writeBuffer =
     state.updateBufferInfos[state.write].attribs['i_Velocity'].buffer;
-  const offset = 65535;
-  gl.bindBufferRange(
-    gl.TRANSFORM_FEEDBACK_BUFFER,
-    0,
-    writeBuffer,
-    4 * 4 * offset,
-    4 * 4 * (state.num - offset)
-  );
-  gl.beginTransformFeedback(gl.POINTS);
-  twgl.drawBufferInfo(
-    gl,
-    state.vaos[state.read],
-    gl.POINTS,
-    state.num - offset,
-    offset
-  );
-  gl.endTransformFeedback();
+  const offset = state.num < 65535 ? state.num : 65535;
+  // gl.bindBufferRange(
+  //   gl.TRANSFORM_FEEDBACK_BUFFER,
+  //   0,
+  //   writeBuffer,
+  //   4 * 4 * offset,
+  //   4 * 4 * (state.num - offset)
+  // );
+  // gl.beginTransformFeedback(gl.POINTS);
+  // twgl.drawBufferInfo(
+  //   gl,
+  //   state.vaos[state.read],
+  //   gl.POINTS,
+  //   state.num - offset,
+  //   offset
+  // );
+  // gl.endTransformFeedback();
   gl.bindBufferRange(
     gl.TRANSFORM_FEEDBACK_BUFFER,
     0,
@@ -226,7 +232,7 @@ function run(gl, state, time) {
   gl.disable(gl.RASTERIZER_DISCARD);
 
   // Render particle system
-  gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbi.framebuffer);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbis[state.write].framebuffer);
   twgl.resizeCanvasToDisplaySize(gl.canvas);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
   gl.useProgram(state.renderProgram.program);
@@ -235,12 +241,8 @@ function run(gl, state, time) {
     state.renderProgram,
     state.vaos[state.read + 2]
   );
-  gl.clearColor(1, 1, 1, 0);
-
+  gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  twgl.setUniforms(state.renderProgram, {
-    u_Color: [1, 1, 1], //Math.random(), Math.random(), Math.random()],
-  });
   twgl.drawBufferInfo(gl, state.vaos[state.read + 2], gl.POINTS);
   gl.bindVertexArray(null);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -257,7 +259,7 @@ function run(gl, state, time) {
     state.displayTextureBufferInfo
   );
   twgl.setUniforms(state.displayTextureProgram, {
-    u_Texture: state.fbi.attachments[0],
+    u_Texture: state.fbis[state.write].attachments[0],
   });
   gl.disable(gl.BLEND);
   twgl.drawBufferInfo(gl, state.displayTextureVao);
