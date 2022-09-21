@@ -5,8 +5,8 @@ precision mediump float;
    update step. */
 uniform float u_TimeDelta;
 /* Where the particle is. */
-in vec2 i_Position;
-in vec2 i_Velocity;
+layout (location = 1) in vec2  i_Position;
+layout (location = 2) in vec2 i_Velocity;
 
 
 /* Outputs. These mirror the inputs. These values will be captured

@@ -21,7 +21,7 @@ function initialData(num) {
 }
 
 function setup(gl) {
-  const particleCount = (65537 * 6) + 20;
+  const particleCount = 65535 * 2;
   // create gl program for updating particle movement
   const updateProgram = twgl.createProgramInfo(gl, [updateVert, updateFrag], {
     transformFeedbackVaryings: ['v_Position', 'v_Velocity'],
@@ -68,16 +68,10 @@ function setup(gl) {
       return twgl.createBufferInfoFromArrays(gl, {
         i_Position: {
           numComponents: 2,
-          // divisor: 1,
           buffer: buffer,
           type: gl.FLOAT,
           stride: 4 * 4,
-          // stride: 4 * 2,
         },
-        // i_Coord: {
-        // data: [1, 1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1],
-        // numComponents: 2,
-        // },
       });
     })
     .map((e) => {
@@ -143,7 +137,6 @@ function setup(gl) {
   gl.blendEquation(gl.FUNC_ADD);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.depthMask(false);
-  // gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   return {
@@ -191,22 +184,46 @@ function run(gl, state, time) {
   // Update particle system
 
   gl.useProgram(state.updateProgram.program);
+
   twgl.setBuffersAndAttributes(gl, state.updateProgram, state.vaos[state.read]);
   twgl.setUniforms(state.updateProgram, {
     u_TimeDelta: timeDelta / 1000,
   });
-  const writeBuffer =
-    state.updateBufferInfos[state.write].attribs['i_Position'].buffer;
-  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, writeBuffer);
-  gl.beginTransformFeedback(gl.POINTS);
+  gl.enable(gl.BLEND);
   gl.enable(gl.RASTERIZER_DISCARD);
-  twgl.drawBufferInfo(gl, state.vaos[state.read], gl.POINTS);
-
-  gl.disable(gl.RASTERIZER_DISCARD);
+  const writeBuffer =
+    state.updateBufferInfos[state.write].attribs['i_Velocity'].buffer;
+  const offset = 65535;
+  gl.bindBufferRange(
+    gl.TRANSFORM_FEEDBACK_BUFFER,
+    0,
+    writeBuffer,
+    4 * 4 * offset,
+    4 * 4 * (state.num - offset)
+  );
+  gl.beginTransformFeedback(gl.POINTS);
+  twgl.drawBufferInfo(
+    gl,
+    state.vaos[state.read],
+    gl.POINTS,
+    state.num - offset,
+    offset
+  );
   gl.endTransformFeedback();
-
+  gl.bindBufferRange(
+    gl.TRANSFORM_FEEDBACK_BUFFER,
+    0,
+    writeBuffer,
+    0,
+    4 * 4 * offset
+  );
+  gl.beginTransformFeedback(gl.POINTS);
+  twgl.drawBufferInfo(gl, state.vaos[state.read], gl.POINTS, offset, 0);
+  gl.endTransformFeedback();
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
   gl.bindVertexArray(null);
+  gl.disable(gl.RASTERIZER_DISCARD);
 
   // Render particle system
   gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbi.framebuffer);
@@ -219,17 +236,12 @@ function run(gl, state, time) {
     state.vaos[state.read + 2]
   );
   gl.clearColor(1, 1, 1, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   twgl.setUniforms(state.renderProgram, {
     u_Color: [1, 1, 1], //Math.random(), Math.random(), Math.random()],
   });
-  gl.enable(gl.BLEND);
   twgl.drawBufferInfo(gl, state.vaos[state.read + 2], gl.POINTS);
-  // 6,
-  // 0,
-  // state.num
-  // );
   gl.bindVertexArray(null);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
@@ -265,6 +277,12 @@ function main() {
     premultipliedAlpha: false,
     alpha: false,
   });
+  console.log(gl.getParameter(gl.MAX_ELEMENT_INDEX));
+  console.log(gl.getParameter(gl.MAX_ELEMENTS_VERTICES));
+  console.log(gl.getParameter(gl.MAX_ELEMENTS_INDICES));
+  console.log(
+    gl.getParameter(gl.MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS)
+  );
   if (gl != null) {
     document.body.appendChild(canvas);
     const state = setup(gl);
