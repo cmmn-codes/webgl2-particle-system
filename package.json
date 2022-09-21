@@ -1,0 +1,21 @@
+{
+  "name": "particle-play",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "parcel src/index.html"
+  },
+  "devDependencies": {
+    "@parcel/transformer-glsl": "^2.7.0",
+    "eslint": "8.22.0",
+    "eslint-config-prettier": "8.5.0",
+    "eslint-plugin-prettier": "4.2.1",
+    "parcel": "^2.7.0",
+    "prettier": "2.7.1"
+  },
+  "dependencies": {
+    "twgl.js": "^5.0.1"
+  }
+}
