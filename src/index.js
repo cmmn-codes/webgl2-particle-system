@@ -13,7 +13,7 @@ function initialData(num) {
     // position
     data.push(Math.random());
     data.push(Math.random());
-
+    // velocity
     data.push((Math.random() - 0.5) * 0.1);
     data.push((Math.random() - 0.5) * 0.1);
   }
@@ -21,7 +21,7 @@ function initialData(num) {
 }
 
 function setup(gl) {
-  const particleCount = 100;
+  const particleCount = (65537 * 6) + 20;
   // create gl program for updating particle movement
   const updateProgram = twgl.createProgramInfo(gl, [updateVert, updateFrag], {
     transformFeedbackVaryings: ['v_Position', 'v_Velocity'],
@@ -68,16 +68,16 @@ function setup(gl) {
       return twgl.createBufferInfoFromArrays(gl, {
         i_Position: {
           numComponents: 2,
-          divisor: 1,
+          // divisor: 1,
           buffer: buffer,
           type: gl.FLOAT,
           stride: 4 * 4,
           // stride: 4 * 2,
         },
-        i_Coord: {
-          data: [1, 1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1],
-          numComponents: 2,
-        },
+        // i_Coord: {
+        // data: [1, 1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1],
+        // numComponents: 2,
+        // },
       });
     })
     .map((e) => {
@@ -98,7 +98,6 @@ function setup(gl) {
     twgl.createVertexArrayInfo(gl, renderProgram, renderBufferInfos[0]),
     twgl.createVertexArrayInfo(gl, renderProgram, renderBufferInfos[1]),
   ];
-  console.log(vaos[2]);
   // I am actually not sure why this is required.
   // Buffer from creating VertexArrayInfo is still bound which causes issues
   // with the transform feedback in the render cycle.
@@ -138,13 +137,13 @@ function setup(gl) {
     displayTextureProgram,
     displayTextureBufferInfo
   );
-  
+
   // setup gl rendering
   gl.enable(gl.BLEND);
   gl.blendEquation(gl.FUNC_ADD);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.depthMask(false);
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  // gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   return {
@@ -211,8 +210,6 @@ function run(gl, state, time) {
 
   // Render particle system
   gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbi.framebuffer);
-  gl.clearColor(1, 1, 1, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
   twgl.resizeCanvasToDisplaySize(gl.canvas);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
   gl.useProgram(state.renderProgram.program);
@@ -221,21 +218,25 @@ function run(gl, state, time) {
     state.renderProgram,
     state.vaos[state.read + 2]
   );
-  twgl.drawBufferInfo(
-    gl,
-    state.vaos[state.read + 2],
-    gl.TRIANGLES,
-    6,
-    0,
-    state.num
-  );
+  gl.clearColor(1, 1, 1, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  twgl.setUniforms(state.renderProgram, {
+    u_Color: [1, 1, 1], //Math.random(), Math.random(), Math.random()],
+  });
+  gl.enable(gl.BLEND);
+  twgl.drawBufferInfo(gl, state.vaos[state.read + 2], gl.POINTS);
+  // 6,
+  // 0,
+  // state.num
+  // );
   gl.bindVertexArray(null);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
   gl.useProgram(state.displayTextureProgram.program);
   // draw texture to the screen
   gl.clearColor(0, 0, 0, 1);
-  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   twgl.resizeCanvasToDisplaySize(gl.canvas);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
   twgl.setBuffersAndAttributes(
@@ -246,6 +247,7 @@ function run(gl, state, time) {
   twgl.setUniforms(state.displayTextureProgram, {
     u_Texture: state.fbi.attachments[0],
   });
+  gl.disable(gl.BLEND);
   twgl.drawBufferInfo(gl, state.displayTextureVao);
   gl.bindVertexArray(null);
 
@@ -256,8 +258,9 @@ function run(gl, state, time) {
 
 function main() {
   const canvas = document.createElement('canvas');
-  canvas.width = 800;
-  canvas.height = 600;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  console.log(canvas.width, canvas.height);
   const gl = canvas.getContext('webgl2', {
     premultipliedAlpha: false,
     alpha: false,
