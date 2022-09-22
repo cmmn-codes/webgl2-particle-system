@@ -37,7 +37,7 @@ vec2 sense(vec2 p, vec2 v, float dist, float theta) {
     float lt = texture(u_Texture, wp + l).r;
 
     // detech any obstruction ahead
-    float front = texture(u_Texture, wp + c * 2.0).r;
+    float front = texture(u_Texture, wp + c).r;
     if (front > 0.99) {
         ivec2 p = ivec2(i_Position.x * 255.0, i_Position.y * 255.0);
         float rand = texelFetch(u_Random, p, 0).r;

@@ -120,7 +120,7 @@ function setup(gl) {
       format: gl.RGBA,
       type: gl.UNSIGNED_BYTE,
       min: gl.NEAREST,
-      wrap: gl.CLAMP_TO_EDGE,
+      wrap: gl.REPEAT,
       level: 0,
     },
   ];
