@@ -14,14 +14,14 @@ function initialData(num) {
     data.push(Math.random());
     data.push(Math.random());
     // velocity
-    data.push((Math.random() - 0.5) * 0.1);
-    data.push((Math.random() - 0.5) * 0.1);
+    data.push((Math.random() - 0.5) * 0.01);
+    data.push((Math.random() - 0.5) * 0.01);
   }
   return data;
 }
 
 function setup(gl) {
-  const particleCount = 1000; // 65535 * 2;
+  const particleCount = 60000; // 65535 * 2;
   // create gl program for updating particle movement
   const updateProgram = twgl.createProgramInfo(gl, [updateVert, updateFrag], {
     transformFeedbackVaryings: ['v_Position', 'v_Velocity'],
@@ -102,12 +102,13 @@ function setup(gl) {
     {
       format: gl.RGBA,
       type: gl.UNSIGNED_BYTE,
-      min: gl.LINEAR,
-      wrap: gl.CLAMP_TO_EDGE,
+      min: gl.NEAREST,
+      wrap: gl.REPEAT,
       level: 0,
     },
   ];
   const fbis = [
+    twgl.createFramebufferInfo(gl, attachments),
     twgl.createFramebufferInfo(gl, attachments),
     twgl.createFramebufferInfo(gl, attachments),
   ];
@@ -232,7 +233,7 @@ function run(gl, state, time) {
   gl.disable(gl.RASTERIZER_DISCARD);
 
   // Render particle system
-  gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbis[state.write].framebuffer);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbis[2].framebuffer);
   twgl.resizeCanvasToDisplaySize(gl.canvas);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
   gl.useProgram(state.renderProgram.program);
@@ -248,6 +249,28 @@ function run(gl, state, time) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
   gl.useProgram(state.displayTextureProgram.program);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbis[state.write].framebuffer);
+  // diffuse texture and keep around
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  twgl.resizeCanvasToDisplaySize(gl.canvas);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  twgl.setBuffersAndAttributes(
+    gl,
+    state.displayTextureProgram,
+    state.displayTextureBufferInfo
+  );
+  twgl.setUniforms(state.displayTextureProgram, {
+    u_Texture: state.fbis[2].attachments[0],
+    u_Previous: state.fbis[state.read].attachments[0],
+    u_Width: gl.canvas.width,
+    u_Height: gl.canvas.height,
+  });
+  gl.disable(gl.BLEND);
+  twgl.drawBufferInfo(gl, state.displayTextureVao);
+  gl.bindVertexArray(null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   // draw texture to the screen
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -259,7 +282,10 @@ function run(gl, state, time) {
     state.displayTextureBufferInfo
   );
   twgl.setUniforms(state.displayTextureProgram, {
-    u_Texture: state.fbis[state.write].attachments[0],
+    u_Texture: state.fbis[2].attachments[0],
+    u_Previous: state.fbis[state.write].attachments[0],
+    u_Width: gl.canvas.width,
+    u_Height: gl.canvas.height,
   });
   gl.disable(gl.BLEND);
   twgl.drawBufferInfo(gl, state.displayTextureVao);
