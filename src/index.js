@@ -7,6 +7,16 @@ import displayFrag from './shaders/display-texture.frag';
 
 import * as twgl from 'twgl.js';
 
+const systemSettings = {
+  population: 65535 + 100,
+  // sensorDist: 30,
+  // sensorAngle: Math.PI / 5 + 0.01,
+  // decay: 0.001,
+  sensorDist: 20,
+  sensorAngle: Math.PI / 4 + 0.01,
+  decay: 0.01,
+};
+
 function randomData(size_x, size_y) {
   const d = [];
   for (let i = 0; i < size_x * size_y; ++i) {
@@ -19,8 +29,8 @@ function initialData(num) {
   const data = [];
   for (let i = 0; i < num; ++i) {
     // position
-    data.push(0.5 + (Math.random() - 0.5) * 1.0);
-    data.push(0.5 + (Math.random() - 0.5) * 1.0);
+    data.push(0.5 + (Math.random() - 0.5) * 0.1);
+    data.push(0.5 + (Math.random() - 0.5) * 0.1);
     // velocity
     data.push((Math.random() - 0.5) * 0.01);
     data.push((Math.random() - 0.5) * 0.01);
@@ -29,7 +39,7 @@ function initialData(num) {
 }
 
 function setup(gl) {
-  const particleCount = 65535 * 2;
+  const particleCount = systemSettings.population; //65535 * 2;
   // create gl program for updating particle movement
   const updateProgram = twgl.createProgramInfo(gl, [updateVert, updateFrag], {
     transformFeedbackVaryings: ['v_Position', 'v_Velocity'],
@@ -210,10 +220,11 @@ function run(gl, state, time) {
   twgl.setBuffersAndAttributes(gl, state.updateProgram, state.vaos[state.read]);
   twgl.setUniforms(state.updateProgram, {
     u_Texture: state.fbis[state.write].attachments[0],
-    u_Width: gl.canvas.width,
-    u_Height: gl.canvas.height,
     u_TimeDelta: timeDelta / 1000,
     u_Random: state.randomTexture,
+    u_Size: [gl.canvas.width, gl.canvas.height],
+    u_SensorAngle: systemSettings.sensorAngle,
+    u_SensorDist: systemSettings.sensorDist,
   });
   gl.enable(gl.BLEND);
   gl.enable(gl.RASTERIZER_DISCARD);
@@ -283,6 +294,7 @@ function run(gl, state, time) {
   twgl.setUniforms(state.displayTextureProgram, {
     u_Texture: state.fbis[2].attachments[0],
     u_Previous: state.fbis[state.read].attachments[0],
+    u_Decay: systemSettings.decay,
     u_Width: gl.canvas.width,
     u_Height: gl.canvas.height,
   });
