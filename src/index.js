@@ -7,12 +7,20 @@ import displayFrag from './shaders/display-texture.frag';
 
 import * as twgl from 'twgl.js';
 
+function randomData(size_x, size_y) {
+  const d = [];
+  for (let i = 0; i < size_x * size_y; ++i) {
+    d.push(Math.random());
+  }
+  return new Uint8Array(d);
+}
+
 function initialData(num) {
   const data = [];
   for (let i = 0; i < num; ++i) {
     // position
-    data.push(Math.random());
-    data.push(Math.random());
+    data.push(0.5 + (Math.random() - 0.5) * 1.0);
+    data.push(0.5 + (Math.random() - 0.5) * 1.0);
     // velocity
     data.push((Math.random() - 0.5) * 0.01);
     data.push((Math.random() - 0.5) * 0.01);
@@ -21,7 +29,7 @@ function initialData(num) {
 }
 
 function setup(gl) {
-  const particleCount = 60000; // 65535 * 2;
+  const particleCount = 65535 * 2;
   // create gl program for updating particle movement
   const updateProgram = twgl.createProgramInfo(gl, [updateVert, updateFrag], {
     transformFeedbackVaryings: ['v_Position', 'v_Velocity'],
@@ -37,6 +45,15 @@ function setup(gl) {
   const buffers = Array.from({ length: 2 }).map(() =>
     twgl.createBufferFromTypedArray(gl, data, gl.ARRAY_BUFFER, gl.STREAM_DRAW)
   );
+
+  const randomTexture = twgl.createTexture(gl, {
+    src: randomData,
+    format: gl.R8,
+    internalFormat: gl.R8,
+    wrap: gl.MIRRORED_REPEAT,
+    level: 0,
+    min: gl.NEAREST,
+  });
 
   const updateBufferInfos = buffers
     .map((buffer) => {
@@ -103,7 +120,7 @@ function setup(gl) {
       format: gl.RGBA,
       type: gl.UNSIGNED_BYTE,
       min: gl.NEAREST,
-      wrap: gl.REPEAT,
+      wrap: gl.CLAMP_TO_EDGE,
       level: 0,
     },
   ];
@@ -158,6 +175,7 @@ function setup(gl) {
     displayTextureProgram,
     displayTextureBufferInfo,
     displayTextureVao,
+    randomTexture,
   };
 }
 
@@ -195,28 +213,29 @@ function run(gl, state, time) {
     u_Width: gl.canvas.width,
     u_Height: gl.canvas.height,
     u_TimeDelta: timeDelta / 1000,
+    u_Random: state.randomTexture,
   });
   gl.enable(gl.BLEND);
   gl.enable(gl.RASTERIZER_DISCARD);
   const writeBuffer =
     state.updateBufferInfos[state.write].attribs['i_Velocity'].buffer;
   const offset = state.num < 65535 ? state.num : 65535;
-  // gl.bindBufferRange(
-  //   gl.TRANSFORM_FEEDBACK_BUFFER,
-  //   0,
-  //   writeBuffer,
-  //   4 * 4 * offset,
-  //   4 * 4 * (state.num - offset)
-  // );
-  // gl.beginTransformFeedback(gl.POINTS);
-  // twgl.drawBufferInfo(
-  //   gl,
-  //   state.vaos[state.read],
-  //   gl.POINTS,
-  //   state.num - offset,
-  //   offset
-  // );
-  // gl.endTransformFeedback();
+  gl.bindBufferRange(
+    gl.TRANSFORM_FEEDBACK_BUFFER,
+    0,
+    writeBuffer,
+    4 * 4 * offset,
+    4 * 4 * (state.num - offset)
+  );
+  gl.beginTransformFeedback(gl.POINTS);
+  twgl.drawBufferInfo(
+    gl,
+    state.vaos[state.read],
+    gl.POINTS,
+    state.num - offset,
+    offset
+  );
+  gl.endTransformFeedback();
   gl.bindBufferRange(
     gl.TRANSFORM_FEEDBACK_BUFFER,
     0,
@@ -283,7 +302,8 @@ function run(gl, state, time) {
   );
   twgl.setUniforms(state.displayTextureProgram, {
     u_Texture: state.fbis[2].attachments[0],
-    u_Previous: state.fbis[state.write].attachments[0],
+    u_Previous: state.fbis[2].attachments[0],
+    // u_Previous: state.fbis[state.write].attachments[0],
     u_Width: gl.canvas.width,
     u_Height: gl.canvas.height,
   });

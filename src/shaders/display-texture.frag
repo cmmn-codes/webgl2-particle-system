@@ -24,7 +24,9 @@ void main() {
             t += texelFetch(u_Previous, ivec2(x, y), 0).rgb;
         }
     }
+    t = abs((t / 9.0) - 0.01);
+
     vec3 c = texelFetch(u_Texture, p, 0).rgb;
-    outColor = vec4((t / 9.0) * 0.99 + c.rgb, 1.0);
+    outColor = vec4(t + c.rgb, 1.0);
     //    outColor = vec4(1.,0.0,1.,1.0);
 }
