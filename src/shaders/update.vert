@@ -49,7 +49,7 @@ vec2 sense(vec2 p, vec2 v, float dist, float theta) {
         return rand < 0.5 ? l : r;// l * length(v);
     }
 
-    if (ct >= lt && ct >= rt) {
+    if (ct > lt && ct > rt) {
         // keep going straight
         return c;
     }

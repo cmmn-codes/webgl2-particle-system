@@ -4,18 +4,58 @@ import updateVert from './shaders/update.vert';
 import updateFrag from './shaders/update.frag';
 import displayVert from './shaders/display-texture.vert';
 import displayFrag from './shaders/display-texture.frag';
+import textImgUrl from 'url:./text.png';
+import logoImgUrl from 'url:./logo.png';
 
 import * as twgl from 'twgl.js';
 
 const systemSettings = {
-  population: 65535 + 100,
+  population: 65535 * 2, //+ 100,
   // sensorDist: 30,
   // sensorAngle: Math.PI / 5 + 0.01,
   // decay: 0.001,
-  sensorDist: 20,
-  sensorAngle: Math.PI / 4 + 0.01,
-  decay: 0.01,
+  // sensorDist: 50,
+  // sensorAngle: Math.PI / 6 + 0.01,
+  // decay: 0.01,
+  sensorDist: 5 + Math.random() * 50,
+  sensorAngle: Math.random() * (Math.PI / 3) + 0.01, //   / 5 + 0.01,
+  decay: 0.001 + Math.random() * 0.1,
+  // sensorDist: 12.16155668349373,
+  // sensorAngle: 0.14858670434295396,
+  // decay: 0.0635702815781241,
+  showEnvironment: !true, //false,
+  imageToShow: 0,
 };
+
+// Temptress
+// sensorDist: 12.16155668349373,
+// sensorAngle: 0.14858670434295396,
+// decay: 0.0635702815781241,
+
+// Chalk drawing
+// decay: 0.009735140535676565
+// sensorAngle: 1.008056445012859
+// sensorDist: 21.994056589919225
+
+window.addEventListener('click', () => {
+  systemSettings.imageToShow = (systemSettings.imageToShow + 1) % 2;
+});
+window.addEventListener('keydown', () => {
+  systemSettings.sensorDist = 5 + Math.random() * 50;
+  systemSettings.sensorAngle = Math.random() * (Math.PI / 3) + 0.01; //   / 5 + 0.01,
+  systemSettings.decay = 0.001 + Math.random() * 0.1;
+  console.log('settings', systemSettings);
+});
+
+async function loadImage(src) {
+  // Asynchronously load an image
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.src = src;
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (e) => reject(e));
+  });
+}
 
 function randomData(size_x, size_y) {
   const d = [];
@@ -29,8 +69,8 @@ function initialData(num) {
   const data = [];
   for (let i = 0; i < num; ++i) {
     // position
-    data.push(0.5 + (Math.random() - 0.5) * 0.1);
-    data.push(0.5 + (Math.random() - 0.5) * 0.1);
+    data.push(0.5 + (Math.random() - 0.5) * 0.6);
+    data.push(0.5 + (Math.random() - 0.5) * 0.6);
     // velocity
     data.push((Math.random() - 0.5) * 0.01);
     data.push((Math.random() - 0.5) * 0.01);
@@ -38,8 +78,8 @@ function initialData(num) {
   return data;
 }
 
-function setup(gl) {
-  const particleCount = systemSettings.population; //65535 * 2;
+function setup(gl, images) {
+  const particleCount = systemSettings.population;
   // create gl program for updating particle movement
   const updateProgram = twgl.createProgramInfo(gl, [updateVert, updateFrag], {
     transformFeedbackVaryings: ['v_Position', 'v_Velocity'],
@@ -64,6 +104,18 @@ function setup(gl) {
     level: 0,
     min: gl.NEAREST,
   });
+
+  const imageTextures = images.map((image) =>
+    twgl.createTexture(gl, {
+      src: image,
+      format: gl.RGBA,
+      internalFormat: gl.RGBA,
+      wrap: gl.CLAMP_TO_EDGE,
+      level: 0,
+      min: gl.LINEAR,
+      flipY: true,
+    })
+  );
 
   const updateBufferInfos = buffers
     .map((buffer) => {
@@ -186,6 +238,7 @@ function setup(gl) {
     displayTextureBufferInfo,
     displayTextureVao,
     randomTexture,
+    imageTextures: imageTextures,
   };
 }
 
@@ -204,7 +257,7 @@ function getTimeDelta(newTime, oldTime) {
 
 function run(gl, state, time) {
   /* Calculate time delta. */
-  let timeDelta = getTimeDelta(time, state.oldTime);
+  let timeDelta = 16.66; // getTimeDelta(time, state.oldTime);
   /* Set the previous update timestamp for calculating time delta in the
        next frame. */
   state.oldTime = time;
@@ -294,6 +347,7 @@ function run(gl, state, time) {
   twgl.setUniforms(state.displayTextureProgram, {
     u_Texture: state.fbis[2].attachments[0],
     u_Previous: state.fbis[state.read].attachments[0],
+    u_Extra: state.imageTextures[systemSettings.imageToShow],
     u_Decay: systemSettings.decay,
     u_Width: gl.canvas.width,
     u_Height: gl.canvas.height,
@@ -314,10 +368,12 @@ function run(gl, state, time) {
   );
   twgl.setUniforms(state.displayTextureProgram, {
     u_Texture: state.fbis[2].attachments[0],
-    u_Previous: state.fbis[2].attachments[0],
-    // u_Previous: state.fbis[state.write].attachments[0],
+    u_Previous: systemSettings.showEnvironment
+      ? state.fbis[state.write].attachments[0]
+      : state.fbis[2].attachments[0],
     u_Width: gl.canvas.width,
     u_Height: gl.canvas.height,
+    u_Decay: 0,
   });
   gl.disable(gl.BLEND);
   twgl.drawBufferInfo(gl, state.displayTextureVao);
@@ -328,10 +384,17 @@ function run(gl, state, time) {
   state.write = tmp;
 }
 
-function main() {
+function gui() {
+
+}
+
+
+async function main() {
   const canvas = document.createElement('canvas');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth; // / 2;
+  canvas.height = window.innerHeight; // / 2;
+  // canvas.style.width = '100%';
+  // canvas.style.height = '100%';
   console.log(canvas.width, canvas.height);
   const gl = canvas.getContext('webgl2', {
     premultipliedAlpha: false,
@@ -345,8 +408,11 @@ function main() {
   );
   if (gl != null) {
     document.body.appendChild(canvas);
-    const state = setup(gl);
+    const logoImage = await loadImage(logoImgUrl);
+    const textImage = await loadImage(textImgUrl);
+    const state = setup(gl, [logoImage, textImage]);
     const loop = (ts) => {
+      run(gl, state, ts);
       run(gl, state, ts);
       window.requestAnimationFrame(function (ts) {
         loop(ts);
