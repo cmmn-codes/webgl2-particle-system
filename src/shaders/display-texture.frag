@@ -26,7 +26,7 @@ void main() {
             t += texelFetch(u_Previous, ivec2(x, y), 0).r;
         }
     }
-    t = abs((t / 9.0) - u_Decay);
+    t = clamp((t / 9.0) - u_Decay, 0., 1.);
 
     float c = texelFetch(u_Texture, p, 0).r;
     if (u_Decay > 0.0) {

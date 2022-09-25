@@ -31,6 +31,7 @@ function update(property) {
   return (e) => {
     const v = parseFloat(e.target.value);
     systemSettings[property] = v;
+    console.log(property, v);
   };
 }
 
@@ -48,7 +49,6 @@ function gui() {
   angleInput.addEventListener('input', update('sensorAngle'));
   distanceInput.addEventListener('input', update('sensorDist'));
   decayInput.addEventListener('input', update('decay'));
-  console.log(decayInput.value);
 }
 
 gui();
@@ -296,7 +296,6 @@ function run(gl, state, time) {
   // Update particle system
 
   gl.useProgram(state.updateProgram.program);
-
   twgl.setBuffersAndAttributes(gl, state.updateProgram, state.vaos[state.read]);
   twgl.setUniforms(state.updateProgram, {
     u_Texture: state.fbis[state.write].attachments[0],
