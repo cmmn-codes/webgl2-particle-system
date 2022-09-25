@@ -4,24 +4,109 @@ import updateVert from './shaders/update.vert';
 import updateFrag from './shaders/update.frag';
 import displayVert from './shaders/display-texture.vert';
 import displayFrag from './shaders/display-texture.frag';
+import textImgUrl from 'url:./text.png';
+import logoImgUrl from 'url:./logo.png';
 
 import * as twgl from 'twgl.js';
+
+const systemSettings = {
+  population: 65535 * 2, //+ 100,
+  // sensorDist: 30,
+  // sensorAngle: Math.PI / 5 + 0.01,
+  // decay: 0.001,
+  // sensorDist: 50,
+  // sensorAngle: Math.PI / 6 + 0.01,
+  // decay: 0.01,
+  sensorDist: 5 + Math.random() * 50,
+  sensorAngle: Math.random() * (Math.PI / 3) + 0.01, //   / 5 + 0.01,
+  decay: 0.001 + Math.random() * 0.1,
+  // sensorDist: 12.16155668349373,
+  // sensorAngle: 0.14858670434295396,
+  // decay: 0.0635702815781241,
+  showEnvironment: !true, //false,
+  imageToShow: 0,
+};
+
+function update(property) {
+  return (e) => {
+    const v = parseFloat(e.target.value);
+    systemSettings[property] = v;
+    console.log(property, v);
+  };
+}
+
+function gui() {
+  const imageSwitchButton = document.getElementById('image-switch');
+  imageSwitchButton.addEventListener('click', () => {
+    systemSettings.imageToShow = (systemSettings.imageToShow + 1) % 2;
+  });
+  const angleInput = document.getElementById('angle');
+  const distanceInput = document.getElementById('distance');
+  const decayInput = document.getElementById('decay');
+  angleInput.value = systemSettings.sensorAngle;
+  distanceInput.value = systemSettings.sensorDist;
+  decayInput.value = systemSettings.decay;
+  angleInput.addEventListener('input', update('sensorAngle'));
+  distanceInput.addEventListener('input', update('sensorDist'));
+  decayInput.addEventListener('input', update('decay'));
+}
+
+gui();
+
+// Temptress
+// sensorDist: 12.16155668349373,
+// sensorAngle: 0.14858670434295396,
+// decay: 0.0635702815781241,
+
+// Chalk drawing
+// decay: 0.009735140535676565
+// sensorAngle: 1.008056445012859
+// sensorDist: 21.994056589919225
+
+// window.addEventListener('click', () => {
+//   systemSettings.imageToShow = (systemSettings.imageToShow + 1) % 2;
+// });
+// window.addEventListener('keydown', () => {
+//   systemSettings.sensorDist = 5 + Math.random() * 50;
+//   systemSettings.sensorAngle = Math.random() * (Math.PI / 3) + 0.01; //   / 5 + 0.01,
+//   systemSettings.decay = 0.001 + Math.random() * 0.1;
+//   // gui();
+//   console.log('settings', systemSettings);
+// });
+
+async function loadImage(src) {
+  // Asynchronously load an image
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.src = src;
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (e) => reject(e));
+  });
+}
+
+function randomData(size_x, size_y) {
+  const d = [];
+  for (let i = 0; i < size_x * size_y; ++i) {
+    d.push(Math.random());
+  }
+  return new Uint8Array(d);
+}
 
 function initialData(num) {
   const data = [];
   for (let i = 0; i < num; ++i) {
     // position
-    data.push(Math.random());
-    data.push(Math.random());
-
-    data.push((Math.random() - 0.5) * 0.1);
-    data.push((Math.random() - 0.5) * 0.1);
+    data.push(0.5 + (Math.random() - 0.5) * 0.6);
+    data.push(0.5 + (Math.random() - 0.5) * 0.6);
+    // velocity
+    data.push((Math.random() - 0.5) * 0.01);
+    data.push((Math.random() - 0.5) * 0.01);
   }
   return data;
 }
 
-function setup(gl) {
-  const particleCount = 100;
+function setup(gl, images) {
+  const particleCount = systemSettings.population;
   // create gl program for updating particle movement
   const updateProgram = twgl.createProgramInfo(gl, [updateVert, updateFrag], {
     transformFeedbackVaryings: ['v_Position', 'v_Velocity'],
@@ -36,6 +121,27 @@ function setup(gl) {
   const data = new Float32Array(initialData(particleCount));
   const buffers = Array.from({ length: 2 }).map(() =>
     twgl.createBufferFromTypedArray(gl, data, gl.ARRAY_BUFFER, gl.STREAM_DRAW)
+  );
+
+  const randomTexture = twgl.createTexture(gl, {
+    src: randomData,
+    format: gl.R8,
+    internalFormat: gl.R8,
+    wrap: gl.MIRRORED_REPEAT,
+    level: 0,
+    min: gl.NEAREST,
+  });
+
+  const imageTextures = images.map((image) =>
+    twgl.createTexture(gl, {
+      src: image,
+      format: gl.RGBA,
+      internalFormat: gl.RGBA,
+      wrap: gl.CLAMP_TO_EDGE,
+      level: 0,
+      min: gl.LINEAR,
+      flipY: true,
+    })
   );
 
   const updateBufferInfos = buffers
@@ -68,15 +174,9 @@ function setup(gl) {
       return twgl.createBufferInfoFromArrays(gl, {
         i_Position: {
           numComponents: 2,
-          divisor: 1,
           buffer: buffer,
           type: gl.FLOAT,
           stride: 4 * 4,
-          // stride: 4 * 2,
-        },
-        i_Coord: {
-          data: [1, 1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1],
-          numComponents: 2,
         },
       });
     })
@@ -98,7 +198,6 @@ function setup(gl) {
     twgl.createVertexArrayInfo(gl, renderProgram, renderBufferInfos[0]),
     twgl.createVertexArrayInfo(gl, renderProgram, renderBufferInfos[1]),
   ];
-  console.log(vaos[2]);
   // I am actually not sure why this is required.
   // Buffer from creating VertexArrayInfo is still bound which causes issues
   // with the transform feedback in the render cycle.
@@ -109,12 +208,16 @@ function setup(gl) {
     {
       format: gl.RGBA,
       type: gl.UNSIGNED_BYTE,
-      min: gl.LINEAR,
-      wrap: gl.CLAMP_TO_EDGE,
+      min: gl.NEAREST,
+      wrap: gl.REPEAT,
       level: 0,
     },
   ];
-  const fbi = twgl.createFramebufferInfo(gl, attachments);
+  const fbis = [
+    twgl.createFramebufferInfo(gl, attachments),
+    twgl.createFramebufferInfo(gl, attachments),
+    twgl.createFramebufferInfo(gl, attachments),
+  ];
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
   // create gl program for rendering a texture to the screen
@@ -138,13 +241,12 @@ function setup(gl) {
     displayTextureProgram,
     displayTextureBufferInfo
   );
-  
+
   // setup gl rendering
   gl.enable(gl.BLEND);
   gl.blendEquation(gl.FUNC_ADD);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.depthMask(false);
-  gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   return {
@@ -158,10 +260,12 @@ function setup(gl) {
     oldTime: 0,
     totalTime: 0,
     vaos,
-    fbi,
+    fbis,
     displayTextureProgram,
     displayTextureBufferInfo,
     displayTextureVao,
+    randomTexture,
+    imageTextures: imageTextures,
   };
 }
 
@@ -180,7 +284,7 @@ function getTimeDelta(newTime, oldTime) {
 
 function run(gl, state, time) {
   /* Calculate time delta. */
-  let timeDelta = getTimeDelta(time, state.oldTime);
+  let timeDelta = 16.66; // getTimeDelta(time, state.oldTime);
   /* Set the previous update timestamp for calculating time delta in the
        next frame. */
   state.oldTime = time;
@@ -194,25 +298,51 @@ function run(gl, state, time) {
   gl.useProgram(state.updateProgram.program);
   twgl.setBuffersAndAttributes(gl, state.updateProgram, state.vaos[state.read]);
   twgl.setUniforms(state.updateProgram, {
+    u_Texture: state.fbis[state.write].attachments[0],
     u_TimeDelta: timeDelta / 1000,
+    u_Random: state.randomTexture,
+    u_Size: [gl.canvas.width, gl.canvas.height],
+    u_SensorAngle: systemSettings.sensorAngle,
+    u_SensorDist: systemSettings.sensorDist,
   });
-  const writeBuffer =
-    state.updateBufferInfos[state.write].attribs['i_Position'].buffer;
-  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, writeBuffer);
-  gl.beginTransformFeedback(gl.POINTS);
+  gl.enable(gl.BLEND);
   gl.enable(gl.RASTERIZER_DISCARD);
-  twgl.drawBufferInfo(gl, state.vaos[state.read], gl.POINTS);
-
-  gl.disable(gl.RASTERIZER_DISCARD);
+  const writeBuffer =
+    state.updateBufferInfos[state.write].attribs['i_Velocity'].buffer;
+  const offset = state.num < 65535 ? state.num : 65535;
+  gl.bindBufferRange(
+    gl.TRANSFORM_FEEDBACK_BUFFER,
+    0,
+    writeBuffer,
+    4 * 4 * offset,
+    4 * 4 * (state.num - offset)
+  );
+  gl.beginTransformFeedback(gl.POINTS);
+  twgl.drawBufferInfo(
+    gl,
+    state.vaos[state.read],
+    gl.POINTS,
+    state.num - offset,
+    offset
+  );
   gl.endTransformFeedback();
-
+  gl.bindBufferRange(
+    gl.TRANSFORM_FEEDBACK_BUFFER,
+    0,
+    writeBuffer,
+    0,
+    4 * 4 * offset
+  );
+  gl.beginTransformFeedback(gl.POINTS);
+  twgl.drawBufferInfo(gl, state.vaos[state.read], gl.POINTS, offset, 0);
+  gl.endTransformFeedback();
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
   gl.bindVertexArray(null);
+  gl.disable(gl.RASTERIZER_DISCARD);
 
   // Render particle system
-  gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbi.framebuffer);
-  gl.clearColor(1, 1, 1, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbis[2].framebuffer);
   twgl.resizeCanvasToDisplaySize(gl.canvas);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
   gl.useProgram(state.renderProgram.program);
@@ -221,21 +351,18 @@ function run(gl, state, time) {
     state.renderProgram,
     state.vaos[state.read + 2]
   );
-  twgl.drawBufferInfo(
-    gl,
-    state.vaos[state.read + 2],
-    gl.TRIANGLES,
-    6,
-    0,
-    state.num
-  );
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  twgl.drawBufferInfo(gl, state.vaos[state.read + 2], gl.POINTS);
   gl.bindVertexArray(null);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
   gl.useProgram(state.displayTextureProgram.program);
-  // draw texture to the screen
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, state.fbis[state.write].framebuffer);
+  // diffuse texture and keep around
   gl.clearColor(0, 0, 0, 1);
-  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   twgl.resizeCanvasToDisplaySize(gl.canvas);
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
   twgl.setBuffersAndAttributes(
@@ -244,8 +371,37 @@ function run(gl, state, time) {
     state.displayTextureBufferInfo
   );
   twgl.setUniforms(state.displayTextureProgram, {
-    u_Texture: state.fbi.attachments[0],
+    u_Texture: state.fbis[2].attachments[0],
+    u_Previous: state.fbis[state.read].attachments[0],
+    u_Extra: state.imageTextures[systemSettings.imageToShow],
+    u_Decay: systemSettings.decay,
+    u_Width: gl.canvas.width,
+    u_Height: gl.canvas.height,
   });
+  gl.disable(gl.BLEND);
+  twgl.drawBufferInfo(gl, state.displayTextureVao);
+  gl.bindVertexArray(null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  // draw texture to the screen
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  twgl.resizeCanvasToDisplaySize(gl.canvas);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  twgl.setBuffersAndAttributes(
+    gl,
+    state.displayTextureProgram,
+    state.displayTextureBufferInfo
+  );
+  twgl.setUniforms(state.displayTextureProgram, {
+    u_Texture: state.fbis[2].attachments[0],
+    u_Previous: systemSettings.showEnvironment
+      ? state.fbis[state.write].attachments[0]
+      : state.fbis[2].attachments[0],
+    u_Width: gl.canvas.width,
+    u_Height: gl.canvas.height,
+    u_Decay: 0,
+  });
+  gl.disable(gl.BLEND);
   twgl.drawBufferInfo(gl, state.displayTextureVao);
   gl.bindVertexArray(null);
 
@@ -254,18 +410,30 @@ function run(gl, state, time) {
   state.write = tmp;
 }
 
-function main() {
+async function main() {
   const canvas = document.createElement('canvas');
-  canvas.width = 800;
-  canvas.height = 600;
+  canvas.width = window.innerWidth; // / 2;
+  canvas.height = window.innerHeight; // / 2;
+  // canvas.style.width = '100%';
+  // canvas.style.height = '100%';
+  console.log(canvas.width, canvas.height);
   const gl = canvas.getContext('webgl2', {
     premultipliedAlpha: false,
     alpha: false,
   });
+  console.log(gl.getParameter(gl.MAX_ELEMENT_INDEX));
+  console.log(gl.getParameter(gl.MAX_ELEMENTS_VERTICES));
+  console.log(gl.getParameter(gl.MAX_ELEMENTS_INDICES));
+  console.log(
+    gl.getParameter(gl.MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS)
+  );
   if (gl != null) {
     document.body.appendChild(canvas);
-    const state = setup(gl);
+    const logoImage = await loadImage(logoImgUrl);
+    const textImage = await loadImage(textImgUrl);
+    const state = setup(gl, [logoImage, textImage]);
     const loop = (ts) => {
+      run(gl, state, ts);
       run(gl, state, ts);
       window.requestAnimationFrame(function (ts) {
         loop(ts);
