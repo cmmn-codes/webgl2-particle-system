@@ -18,17 +18,17 @@ void main() {
     ivec2 p = ivec2(v_Texcoord.x * u_Width, v_Texcoord.y * u_Height);
     int w = int(u_Width);
     int h = int(u_Height);
-    vec3 t = vec3(0., 0., 0.);
+    float t = 0.1;
     for (int i = -1; i < 2; i++) {
         for (int j = -1; j < 2; j++) {
             int x = (w + p.x + i) % w;
             int y = (h + p.y + j) % h;
-            t += texelFetch(u_Previous, ivec2(x, y), 0).rgb;
+            t += texelFetch(u_Previous, ivec2(x, y), 0).r;
         }
     }
     t = abs((t / 9.0) - u_Decay);
 
-    vec3 c = texelFetch(u_Texture, p, 0).rgb;
+    float c = texelFetch(u_Texture, p, 0).r;
     if (u_Decay > 0.0) {
         float v = texture(u_Extra, v_Texcoord).r;
         if (v > 0.0) {
@@ -37,6 +37,6 @@ void main() {
         }
 
     }
-    outColor = vec4(t + c.rgb, 1.0);
+    outColor = vec4(t + c, t + c, t + c, 1.0);
     //    outColor = vec4(1.,0.0,1.,1.0);
 }
