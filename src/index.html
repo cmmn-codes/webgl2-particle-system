@@ -7,8 +7,31 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Document</title>
   <script type="module" src="index.js"></script>
+  <style>
+      .gui {
+          font-family: sans-serif;
+          background: rgba(255, 255, 255, 0.8);
+          position: fixed;
+          bottom: 0;
+          right: 0;
+      }
+  </style>
 </head>
 <body>
-
+<div class="gui">
+  <input type="range" id="distance" name="distance"
+         min="5" max="55">
+  <label for="distance">Distance</label>
+  <br/>
+  <input type="range" id="angle" name="angle"
+         min="0.01" max="3.151592653589793" step="0.01">
+  <label for="angle">Angle</label>
+  <br/>
+  <input type="range" id="decay" name="decay"
+         min="0.001" max="0.1" step="0.001">
+  <label for="decay">Decay</label>
+  <br/>
+  <button id="image-switch">switch</button>
+</div>
 </body>
 </html>

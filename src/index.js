@@ -27,6 +27,32 @@ const systemSettings = {
   imageToShow: 0,
 };
 
+function update(property) {
+  return (e) => {
+    const v = parseFloat(e.target.value);
+    systemSettings[property] = v;
+  };
+}
+
+function gui() {
+  const imageSwitchButton = document.getElementById('image-switch');
+  imageSwitchButton.addEventListener('click', () => {
+    systemSettings.imageToShow = (systemSettings.imageToShow + 1) % 2;
+  });
+  const angleInput = document.getElementById('angle');
+  const distanceInput = document.getElementById('distance');
+  const decayInput = document.getElementById('decay');
+  angleInput.value = systemSettings.sensorAngle;
+  distanceInput.value = systemSettings.sensorDist;
+  decayInput.value = systemSettings.decay;
+  angleInput.addEventListener('input', update('sensorAngle'));
+  distanceInput.addEventListener('input', update('sensorDist'));
+  decayInput.addEventListener('input', update('decay'));
+  console.log(decayInput.value);
+}
+
+gui();
+
 // Temptress
 // sensorDist: 12.16155668349373,
 // sensorAngle: 0.14858670434295396,
@@ -37,15 +63,16 @@ const systemSettings = {
 // sensorAngle: 1.008056445012859
 // sensorDist: 21.994056589919225
 
-window.addEventListener('click', () => {
-  systemSettings.imageToShow = (systemSettings.imageToShow + 1) % 2;
-});
-window.addEventListener('keydown', () => {
-  systemSettings.sensorDist = 5 + Math.random() * 50;
-  systemSettings.sensorAngle = Math.random() * (Math.PI / 3) + 0.01; //   / 5 + 0.01,
-  systemSettings.decay = 0.001 + Math.random() * 0.1;
-  console.log('settings', systemSettings);
-});
+// window.addEventListener('click', () => {
+//   systemSettings.imageToShow = (systemSettings.imageToShow + 1) % 2;
+// });
+// window.addEventListener('keydown', () => {
+//   systemSettings.sensorDist = 5 + Math.random() * 50;
+//   systemSettings.sensorAngle = Math.random() * (Math.PI / 3) + 0.01; //   / 5 + 0.01,
+//   systemSettings.decay = 0.001 + Math.random() * 0.1;
+//   // gui();
+//   console.log('settings', systemSettings);
+// });
 
 async function loadImage(src) {
   // Asynchronously load an image
@@ -383,11 +410,6 @@ function run(gl, state, time) {
   state.read = state.write;
   state.write = tmp;
 }
-
-function gui() {
-
-}
-
 
 async function main() {
   const canvas = document.createElement('canvas');
