@@ -14,7 +14,6 @@ uniform float u_Decay;
 out vec4 outColor;
 
 void main() {
-    //    outColor = texture(u_Texture, v_Texcoord + 0.5);
     ivec2 p = ivec2(v_Texcoord.x * u_Width, v_Texcoord.y * u_Height);
     int w = int(u_Width);
     int h = int(u_Height);
@@ -30,7 +29,17 @@ void main() {
 
     float c = texelFetch(u_Texture, p, 0).r;
     if (u_Decay > 0.0) {
-        float v = texture(u_Extra, v_Texcoord).r;
+        // get the texture
+        float ratio = u_Width / u_Height;
+        vec2 translate = vec2(0., -0.5 + (0.5 * ratio));
+        vec2 scale = vec2(1., ratio);
+
+        if (ratio > 1.0) {
+            translate = vec2(-0.5 + (0.5 * (1. / ratio)), 0.);;
+            scale = vec2(1. / scale.y, scale.x);
+        }
+
+        float v = texture(u_Extra, (v_Texcoord + translate) / scale).r;
         if (v > 0.0) {
             outColor = vec4(0.7);
             return;
@@ -38,5 +47,4 @@ void main() {
 
     }
     outColor = vec4(t + c, t + c, t + c, 1.0);
-    //    outColor = vec4(1.,0.0,1.,1.0);
 }
