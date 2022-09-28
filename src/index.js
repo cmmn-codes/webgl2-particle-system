@@ -11,6 +11,8 @@ import * as twgl from 'twgl.js';
 
 const systemSettings = {
   population: 65535 * 2, //+ 100,
+  dispersion: 1.0,
+  birthRate: 200,
   // sensorDist: 30,
   // sensorAngle: Math.PI / 5 + 0.01,
   // decay: 0.001,
@@ -96,8 +98,8 @@ function initialData(num) {
   const data = [];
   for (let i = 0; i < num; ++i) {
     // position
-    data.push(0.5 + (Math.random() - 0.5) * 0.6);
-    data.push(0.5 + (Math.random() - 0.5) * 0.6);
+    data.push(0.5 + (Math.random() - 0.5) * systemSettings.dispersion);
+    data.push(0.5 + (Math.random() - 0.5) * systemSettings.dispersion);
     // velocity
     data.push((Math.random() - 0.5) * 0.01);
     data.push((Math.random() - 0.5) * 0.01);
@@ -250,7 +252,8 @@ function setup(gl, images) {
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   return {
-    num: particleCount,
+    num: 1,
+    maxParticleCount: particleCount,
     read: 0,
     write: 1,
     updateProgram,
@@ -284,6 +287,12 @@ function getTimeDelta(newTime, oldTime) {
 
 function run(gl, state, time) {
   /* Calculate time delta. */
+  if (state.num < state.maxParticleCount) {
+    state.num += systemSettings.birthRate;
+    if (state.num > state.maxParticleCount - 1) {
+      state.num = state.maxParticleCount - 1;
+    }
+  }
   let timeDelta = 16.66; // getTimeDelta(time, state.oldTime);
   /* Set the previous update timestamp for calculating time delta in the
        next frame. */
@@ -309,33 +318,62 @@ function run(gl, state, time) {
   gl.enable(gl.RASTERIZER_DISCARD);
   const writeBuffer =
     state.updateBufferInfos[state.write].attribs['i_Velocity'].buffer;
-  const offset = state.num < 65535 ? state.num : 65535;
-  gl.bindBufferRange(
-    gl.TRANSFORM_FEEDBACK_BUFFER,
-    0,
-    writeBuffer,
-    4 * 4 * offset,
-    4 * 4 * (state.num - offset)
-  );
-  gl.beginTransformFeedback(gl.POINTS);
-  twgl.drawBufferInfo(
-    gl,
-    state.vaos[state.read],
-    gl.POINTS,
-    state.num - offset,
-    offset
-  );
-  gl.endTransformFeedback();
-  gl.bindBufferRange(
-    gl.TRANSFORM_FEEDBACK_BUFFER,
-    0,
-    writeBuffer,
-    0,
-    4 * 4 * offset
-  );
-  gl.beginTransformFeedback(gl.POINTS);
-  twgl.drawBufferInfo(gl, state.vaos[state.read], gl.POINTS, offset, 0);
-  gl.endTransformFeedback();
+
+  const feedbackBufferMaxSize = 65535;
+  let offset = 0;
+  while (offset < state.num) {
+    const previousOffset = offset;
+    offset += feedbackBufferMaxSize;
+    const size =
+      offset > state.num
+        ? state.num % feedbackBufferMaxSize
+        : feedbackBufferMaxSize;
+    // console.log(offset, state.num, previousOffset, size);
+    gl.bindBufferRange(
+      gl.TRANSFORM_FEEDBACK_BUFFER,
+      0,
+      writeBuffer,
+      4 * 4 * previousOffset,
+      4 * 4 * size
+    );
+    gl.beginTransformFeedback(gl.POINTS);
+    twgl.drawBufferInfo(
+      gl,
+      state.vaos[state.read],
+      gl.POINTS,
+      size,
+      previousOffset
+    );
+    gl.endTransformFeedback();
+  }
+
+  // const offset = state.num < 65535 ? state.num : 65535;
+  // gl.bindBufferRange(
+  //   gl.TRANSFORM_FEEDBACK_BUFFER,
+  //   0,
+  //   writeBuffer,
+  //   4 * 4 * offset,
+  //   4 * 4 * (state.num - offset)
+  // );
+  // gl.beginTransformFeedback(gl.POINTS);
+  // twgl.drawBufferInfo(
+  //   gl,
+  //   state.vaos[state.read],
+  //   gl.POINTS,
+  //   state.num - offset,
+  //   offset
+  // );
+  // gl.endTransformFeedback();
+  // gl.bindBufferRange(
+  //   gl.TRANSFORM_FEEDBACK_BUFFER,
+  //   0,
+  //   writeBuffer,
+  //   0,
+  //   4 * 4 * offset
+  // );
+  // gl.beginTransformFeedback(gl.POINTS);
+  // twgl.drawBufferInfo(gl, state.vaos[state.read], gl.POINTS, offset, 0);
+  // gl.endTransformFeedback();
   gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
   gl.bindVertexArray(null);
@@ -353,7 +391,7 @@ function run(gl, state, time) {
   );
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  twgl.drawBufferInfo(gl, state.vaos[state.read + 2], gl.POINTS);
+  twgl.drawBufferInfo(gl, state.vaos[state.read + 2], gl.POINTS, state.num);
   gl.bindVertexArray(null);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
